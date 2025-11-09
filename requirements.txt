@@ -1,0 +1,12 @@
+aiohttp
+botbuilder-core
+botbuilder-integration-aiohttp
+python-dotenv
+langchain
+langchain-community
+langchain-openai
+chromadb
+azure-functions
+azure-cosmos
+pypdf
+tiktoken
