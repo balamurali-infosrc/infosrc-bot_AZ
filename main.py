@@ -25,6 +25,14 @@ from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import Chroma
 from langchain_classic.chains import RetrievalQA
+# from langchain.chains.combine_documents import create_stuff_documents_chain
+# from langchain.chains import create_retrieval_chain
+# from langchain_community.chains import RetrievalQA
+# from langchain.chains import RetrievalQA
+# from langchain.chains.retrieval import RetrievalQA
+
+# from langchain.schema import BaseRetriever, Document
+
 
 # Load environment variables
 load_dotenv()
@@ -96,11 +104,23 @@ llm = ChatOpenAI(
 )
 
 # Your RAG chain
-qa_chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=retriever,
-    return_source_documents=True
-)
+# qa_chain = RetrievalQA(
+#     llm=llm,
+#     retriever=retriever,
+#     return_source_documents=True
+# )
+
+# document_chain = create_stuff_documents_chain(llm)
+# qa_chain = create_retrieval_chain(retriever, document_chain)
+
+def ask_rag(question):
+    docs = retriever.get_relevant_documents(question)
+    context = "\n\n".join(doc.page_content for doc in docs)
+
+    prompt = f"Context:\n{context}\n\nQuestion: {question}\nAnswer:"
+    response = llm.invoke(prompt)
+
+    return response, docs
 
 print("RAG system ready! Bot can now answer from PDFs.")
 
