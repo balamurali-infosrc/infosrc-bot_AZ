@@ -24,7 +24,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import Chroma
-from langchain_classic.chains import RetrievalQA
+# from langchain_classic.chains import RetrievalQA
 # from langchain.chains.combine_documents import create_stuff_documents_chain
 # from langchain.chains import create_retrieval_chain
 # from langchain_community.chains import RetrievalQA
