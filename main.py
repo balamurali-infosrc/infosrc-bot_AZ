@@ -6,11 +6,6 @@ import traceback
 from datetime import datetime
 from http import HTTPStatus
 
-import os
-import uuid
-from azure.cosmos import CosmosClient
-
-
 from aiohttp import web
 from aiohttp.web import Request, Response
 
@@ -85,61 +80,14 @@ embeddings = OpenAIEmbeddings(
     openai_api_key=os.getenv("OPENAI_API_KEY")
 )
 
-# db = Chroma.from_documents(
-#     texts, embeddings,
-#     collection_name="rules_collection",
-#     persist_directory="./chroma_db"
-# )
-# db.persist()
+db = Chroma.from_documents(
+    texts, embeddings,
+    collection_name="rules_collection",
+    persist_directory="./chroma_db"
+)
+db.persist()
 
-# retriever = db.as_retriever(search_kwargs={"k": 3})
-COSMOS_URI = os.getenv("COSMOS_URI")
-COSMOS_KEY = os.getenv("COSMOS_KEY")
-DB_NAME = os.getenv("COSMOS_DB_NAME")
-CONTAINER_NAME = os.getenv("COSMOS_CONTAINER_NAME")
-
-client = CosmosClient(COSMOS_URI, credential=COSMOS_KEY)
-database = client.get_database_client(DB_NAME)
-container = database.get_container_client(CONTAINER_NAME)
-
-def store_to_cosmos(texts, embeddings):
-    for text, emb in zip(texts, embeddings):
-        item = {
-            "id": str(uuid.uuid4()),
-            "content": text,
-            "embedding": emb   # Stored as vector array
-        }
-        container.create_item(item)
-
-store_to_cosmos(texts, embeddings)
-
-class CosmosRetriever:
-    def __init__(self, container, k=3):
-        self.container = container
-        self.k = k
-
-    def search(self, query_embedding):
-        results = self.container.query_items(
-            """
-            SELECT TOP @k c.content, VectorDistance(c.embedding, @vec) AS score
-            FROM c
-            ORDER BY score
-            """,
-            parameters=[
-                {"name": "@k", "value": self.k},
-                {"name": "@vec", "value": query_embedding}
-            ],
-            enable_cross_partition_query=True,
-        )
-        return list(results)
-    
-query_emb = embeddings.embed_query("rules for tobacco")
-
-retriever = CosmosRetriever(container, k=3)
-docs = retriever.search(query_emb)
-
-for doc in docs:
-    print(doc["content"], " | score:", doc["score"])
+retriever = db.as_retriever(search_kwargs={"k": 3})
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
