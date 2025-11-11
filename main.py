@@ -5,6 +5,7 @@ import sys
 import traceback
 from datetime import datetime
 from http import HTTPStatus
+
 from aiohttp import web
 from aiohttp.web import Request, Response
 
@@ -12,7 +13,6 @@ from botbuilder.core import TurnContext
 from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
 from botbuilder.schema import Activity, ActivityTypes
-from langchain_openai import AzureOpenAIEmbeddings
 
 from config import DefaultConfig
 from openai import AsyncOpenAI
@@ -24,15 +24,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import Chroma
-# from langchain_classic.chains import RetrievalQA
-# from langchain.chains.combine_documents import create_stuff_documents_chain
-# from langchain.chains import create_retrieval_chain
-# from langchain_community.chains import RetrievalQA
-# from langchain.chains import RetrievalQA
-# from langchain.chains.retrieval import RetrievalQA
-
-# from langchain.schema import BaseRetriever, Document
-
+from langchain_classic.chains import RetrievalQA
 
 # Load environment variables
 load_dotenv()
@@ -81,14 +73,11 @@ docs = text_splitter.split_documents(all_documents)
 
 # Use all docs as texts
 texts = docs
-# openai_api_key=os.getenv("OPENAI_API_KEY"),
 
 # Embeddings + Chroma
 embeddings = OpenAIEmbeddings(
-    api_key=os.getenv("OPENAI_API_KEY"),
     model="text-embedding-3-small",
-    # azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    #  model=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
+    openai_api_key=os.getenv("OPENAI_API_KEY")
 )
 
 db = Chroma.from_documents(
@@ -107,23 +96,11 @@ llm = ChatOpenAI(
 )
 
 # Your RAG chain
-# qa_chain = RetrievalQA(
-#     llm=llm,
-#     retriever=retriever,
-#     return_source_documents=True
-# )
-
-# document_chain = create_stuff_documents_chain(llm)
-# qa_chain = create_retrieval_chain(retriever, document_chain)
-
-def ask_rag(question):
-    docs = retriever.get_relevant_documents(question)
-    context = "\n\n".join(doc.page_content for doc in docs)
-
-    prompt = f"Context:\n{context}\n\nQuestion: {question}\nAnswer:"
-    response = llm.invoke(prompt)
-
-    return response, docs
+qa_chain = RetrievalQA.from_chain_type(
+    llm=llm,
+    retriever=retriever,
+    return_source_documents=True
+)
 
 print("RAG system ready! Bot can now answer from PDFs.")
 

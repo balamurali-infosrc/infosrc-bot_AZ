@@ -21,6 +21,3 @@ Thumbs.db
 # IDE configs
 .vscode/
 .idea/
-#chroma_db
-.chroma_db
-local.settings.json
