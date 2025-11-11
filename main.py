@@ -5,7 +5,6 @@ import sys
 import traceback
 from datetime import datetime
 from http import HTTPStatus
-
 from aiohttp import web
 from aiohttp.web import Request, Response
 
@@ -13,6 +12,7 @@ from botbuilder.core import TurnContext
 from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
 from botbuilder.schema import Activity, ActivityTypes
+from langchain_openai import AzureOpenAIEmbeddings
 
 from config import DefaultConfig
 from openai import AsyncOpenAI
@@ -81,11 +81,14 @@ docs = text_splitter.split_documents(all_documents)
 
 # Use all docs as texts
 texts = docs
+# openai_api_key=os.getenv("OPENAI_API_KEY"),
 
 # Embeddings + Chroma
 embeddings = OpenAIEmbeddings(
+    api_key=os.getenv("OPENAI_API_KEY"),
     model="text-embedding-3-small",
-    openai_api_key=os.getenv("OPENAI_API_KEY")
+    # azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    #  model=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
 )
 
 db = Chroma.from_documents(
