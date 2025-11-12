@@ -1,70 +1,70 @@
-name: Deploy Azure Function
+# name: Deploy Azure Function
 
-on:
-  push:
-    branches:
-      - main
-permissions:
-  id-token: write
-  contents: read
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+# on:
+#   push:
+#     branches:
+#       - main
+# permissions:
+#   id-token: write
+#   contents: read
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.9'
+#     - name: Setup Python
+#       uses: actions/setup-python@v5
+#       with:
+#         python-version: '3.9'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install -r requirements.txt
 
-    - name: Install Azure Functions Core Tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y azure-functions-core-tools-4
+#     - name: Install Azure Functions Core Tools
+#       run: |
+#         sudo apt-get update
+#         sudo apt-get install -y azure-functions-core-tools-4
 
-    - name: Login to Azure using publish profile
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        auth-type: service_principal
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+#     - name: Login to Azure using publish profile
+#       uses: azure/login@v2
+#       with:
+#         client-id: ${{ secrets.AZURE_CLIENT_ID }}
+#         client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+#         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+#         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+#         auth-type: service_principal
+#         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
-    - name: Deploy to Azure Function App
-      uses: azure/functions-action@v1
-      with:
-        app-name: myappinfoser-func-dev
-        package: .
+#     - name: Deploy to Azure Function App
+#       uses: azure/functions-action@v1
+#       with:
+#         app-name: infoser102
+#         package: .
 
-    # - name: Deploy to Azure Function App
-    #   run: |
-    #    cd ./INFOSRC-BOT  # ✅ Change this to your actual Azure Function project folder
-    #    func azure functionapp publish myappinfoser-func-dev --python
+#     # - name: Deploy to Azure Function App
+#     #   run: |
+#     #    cd ./INFOSRC-BOT  # ✅ Change this to your actual Azure Function project folder
+#     #    func azure functionapp publish myappinfoser-func-dev --python
 
 
-    - name: Set Function App AppSettings
-      run: |
-        az functionapp config appsettings set \
-          --name myappinfoser-func-dev \
-          --resource-group myappinfoser-rg-dev \
-          --settings \
-            MICROSOFT_APP_ID='${{ secrets.MICROSOFT_APP_ID }}' \
-            MICROSOFT_APP_PASSWORD='${{ secrets.MICROSOFT_APP_PASSWORD }}' \
-            MICROSOFT_TENANT_ID='${{ secrets.MICROSOFT_TENANT_ID }}' \
-            MicrosoftAppType='SingleTenant'
+#     - name: Set Function App AppSettings
+#       run: |
+#         az functionapp config appsettings set \
+#           --name myappinfoser-func-dev \
+#           --resource-group myappinfoser-rg-dev \
+#           --settings \
+#             MICROSOFT_APP_ID='${{ secrets.MICROSOFT_APP_ID }}' \
+#             MICROSOFT_APP_PASSWORD='${{ secrets.MICROSOFT_APP_PASSWORD }}' \
+#             MICROSOFT_TENANT_ID='${{ secrets.MICROSOFT_TENANT_ID }}' \
+#             MicrosoftAppType='SingleTenant'
 
-    - name: Restart Function App
-      run: |
-        az functionapp restart \
-          --name myappinfoser-func-dev \
-          --resource-group myappinfoser-rg-dev
+#     - name: Restart Function App
+#       run: |
+#         az functionapp restart \
+#           --name myappinfoser-func-dev \
+#           --resource-group myappinfoser-rg-dev
