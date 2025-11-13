@@ -43,7 +43,7 @@ jobs:
     - name: Deploy to Azure Function App
       uses: azure/functions-action@v1
       with:
-        app-name: infoser102
+        app-name: infosrcda
         package: .
 
     # - name: Deploy to Azure Function App
@@ -55,8 +55,8 @@ jobs:
     - name: Set Function App AppSettings
       run: |
         az functionapp config appsettings set \
-          --name infoser102 \
-          --resource-group test-123 \
+          --name infosrcda \
+          --resource-group Infosrc_RG\
           --settings \
             MICROSOFT_APP_ID='${{ secrets.MICROSOFT_APP_ID }}' \
             MICROSOFT_APP_PASSWORD='${{ secrets.MICROSOFT_APP_PASSWORD }}' \
@@ -66,5 +66,5 @@ jobs:
     - name: Restart Function App
       run: |
         az functionapp restart \
-          --name infoser102 \
-          --resource-group test-123
+          --name infosrcda \
+          --resource-group Infosrc_RG
