@@ -164,7 +164,7 @@ class MyLLMBot:
 # Create the bot instance
 BOT = MyLLMBot()
 
-# APP = web.Application()
+
 
 # Listen for incoming requests
 async def messages(req: Request) -> Response:
@@ -172,12 +172,14 @@ async def messages(req: Request) -> Response:
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
 APP.router.add_post("/api/messages", messages)
+# APP.router.add_get("/", messages)
+
 
 # APP.router.add_get("/", messages)
 # return web.Response(text="✅ Bot App is running on Azure App Service!")
 # async def handle_root(req: Request):
 #     return web.Response(text="✅ Bot service is running successfully on Azure App Service!")
-# APP.router.add_get("/", messages)
+# APP.router.add_get("/", handle_root)
 
  
 
