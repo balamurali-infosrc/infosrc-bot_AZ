@@ -73,7 +73,7 @@
 name: Build and deploy Python app to Azure Web App
 
 env:
-  AZURE_WEBAPP_NAME: infoserdaa  # set this to the name of your Azure Web App
+  AZURE_WEBAPP_NAME: inserdaa    # set this to the name of your Azure Web App
   PYTHON_VERSION: '3.13'              # set this to the Python version to use
 
 on:
