@@ -167,7 +167,7 @@ BOT = MyLLMBot()
 
 
 # Listen for incoming requests
-async def messages(req: Request) -> Response:
+async def messages(req:web.Request) -> web.Response:
     return await ADAPTER.process(req, BOT)
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])

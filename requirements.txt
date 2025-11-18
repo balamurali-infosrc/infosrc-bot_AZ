@@ -2,13 +2,12 @@ aiohttp
 botbuilder-core
 botbuilder-integration-aiohttp
 python-dotenv
-langchain>=0.2.14
-langchain-community>=0.2.12
-langchain-openai>=0.2.0
-chromadb>=0.5.5
-duckdb>=0.9.2
-pysqlite3-binary>=0.5.2
-pypdf
+langchain
+langchain-community
+langchain-openai
+chromadb
+duckdb
+pysqlite3-binary
 tiktoken
 openai
 
