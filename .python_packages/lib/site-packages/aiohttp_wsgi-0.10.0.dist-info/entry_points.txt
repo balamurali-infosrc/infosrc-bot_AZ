@@ -1,0 +1,3 @@
+[console_scripts]
+aiohttp-wsgi-serve = aiohttp_wsgi.__main__:main
+

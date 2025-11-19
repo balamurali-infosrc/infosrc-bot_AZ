@@ -8,7 +8,7 @@ load_dotenv()
 class DefaultConfig:
     """Bot Configuration"""
 
-    PORT = 3978
+    PORT = 8000
     APP_ID = os.environ.get("MICROSOFT_APP_ID", "")
     APP_PASSWORD = os.environ.get("MICROSOFT_APP_PASSWORD", "")
     APP_TENANTID = os.environ.get("MICROSOFT_TENANT_ID", "")

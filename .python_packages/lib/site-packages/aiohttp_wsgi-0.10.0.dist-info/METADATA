@@ -1,0 +1,27 @@
+Metadata-Version: 2.1
+Name: aiohttp-wsgi
+Version: 0.10.0
+Summary: WSGI adapter for aiohttp.
+Home-page: https://github.com/etianen/aiohttp-wsgi
+Author: Dave Hall
+Author-email: dave@etianen.com
+License: BSD
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Framework :: Django
+License-File: LICENSE
+Requires-Dist: aiohttp (<4,>=3.4)
+
+UNKNOWN
+

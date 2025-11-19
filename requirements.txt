@@ -1,15 +1,19 @@
 aiohttp
 botbuilder-core
 botbuilder-integration-aiohttp
+botbuilder-schema
 python-dotenv
 langchain
 langchain-community
 langchain-openai
 chromadb
 duckdb
-pysqlite3-binary
 tiktoken
 openai
+gunicorn
+pypdf
+aiohttp_wsgi
+
 
 
 

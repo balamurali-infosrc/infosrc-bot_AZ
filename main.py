@@ -164,8 +164,10 @@ class MyLLMBot:
 # Create the bot instance
 BOT = MyLLMBot()
 
+# routes = web.RouteTableDef()
 
-
+# @routes.post("/api/messages")
+APP = web.Application()
 # Listen for incoming requests
 async def messages(req:web.Request) -> web.Response:
     return await ADAPTER.process(req, BOT)
@@ -173,6 +175,7 @@ async def messages(req:web.Request) -> web.Response:
 APP = web.Application(middlewares=[aiohttp_error_middleware])
 APP.router.add_post("/api/messages", messages)
 # APP.router.add_get("/", messages)
+# APP.add_routes(routes)
 
 
 # APP.router.add_get("/", messages)
@@ -183,11 +186,11 @@ APP.router.add_post("/api/messages", messages)
 
  
 
-if __name__ == "__main__":
-    try:
-        web.run_app(APP, host="localhost", port=CONFIG.PORT)
-        #  web.run_app(debug=True ,port=CONFIG.PORT,use_reloader=False)
-        # web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT, handle_signals=True)
+# if __name__ == "__main__":
+#     try:
+#         web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT)
+#         #  web.run_app(debug=True ,port=CONFIG.PORT,use_reloader=False)
+#         # web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT, handle_signals=True)
 
-    except Exception as error:
-        raise error
+#     except Exception as error:
+#         raise error
