@@ -8,7 +8,7 @@ from http import HTTPStatus
 
 from aiohttp import web
 from aiohttp.web import Request, Response
-
+from chromadb.config import Settings
 from botbuilder.core import TurnContext
 from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
@@ -79,6 +79,15 @@ embeddings = OpenAIEmbeddings(
     model="text-embedding-3-small",
     openai_api_key=os.getenv("OPENAI_API_KEY")
 )
+# db = Chroma.from_documents(
+#     texts,
+#     embeddings,
+#     collection_name="rules_collection",
+#     client_settings=Settings(
+#         chroma_db_impl="duckdb+parquet",
+#         persist_directory="./chroma_db"
+#     )
+# )
 
 db = Chroma.from_documents(
     texts, embeddings,
@@ -186,11 +195,11 @@ APP.router.add_post("/api/messages", messages)
 
  
 
-# if __name__ == "__main__":
-#     try:
-#         web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT)
-#         #  web.run_app(debug=True ,port=CONFIG.PORT,use_reloader=False)
-#         # web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT, handle_signals=True)
+if __name__ == "__main__":
+    try:
+        web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT)
+        #  web.run_app(debug=True ,port=CONFIG.PORT,use_reloader=False)
+        # web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT, handle_signals=True)
 
-#     except Exception as error:
-#         raise error
+    except Exception as error:
+        raise error
