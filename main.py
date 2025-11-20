@@ -8,7 +8,7 @@ from http import HTTPStatus
 
 from aiohttp import web
 from aiohttp.web import Request, Response
-from chromadb.config import Settings
+
 from botbuilder.core import TurnContext
 from botbuilder.core.integration import aiohttp_error_middleware
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
@@ -79,15 +79,6 @@ embeddings = OpenAIEmbeddings(
     model="text-embedding-3-small",
     openai_api_key=os.getenv("OPENAI_API_KEY")
 )
-# db = Chroma.from_documents(
-#     texts,
-#     embeddings,
-#     collection_name="rules_collection",
-#     client_settings=Settings(
-#         chroma_db_impl="duckdb+parquet",
-#         persist_directory="./chroma_db"
-#     )
-# )
 
 db = Chroma.from_documents(
     texts, embeddings,
@@ -173,33 +164,16 @@ class MyLLMBot:
 # Create the bot instance
 BOT = MyLLMBot()
 
-# routes = web.RouteTableDef()
 
-# @routes.post("/api/messages")
-APP = web.Application()
 # Listen for incoming requests
-async def messages(req:web.Request) -> web.Response:
+async def messages(req: Request) -> Response:
     return await ADAPTER.process(req, BOT)
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
 APP.router.add_post("/api/messages", messages)
-# APP.router.add_get("/", messages)
-# APP.add_routes(routes)
-
-
-# APP.router.add_get("/", messages)
-# return web.Response(text="✅ Bot App is running on Azure App Service!")
-# async def handle_root(req: Request):
-#     return web.Response(text="✅ Bot service is running successfully on Azure App Service!")
-# APP.router.add_get("/", handle_root)
-
- 
 
 if __name__ == "__main__":
     try:
-        web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT)
-        #  web.run_app(debug=True ,port=CONFIG.PORT,use_reloader=False)
-        # web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT, handle_signals=True)
-
+        web.run_app(APP, host="localhost", port=CONFIG.PORT)
     except Exception as error:
         raise error
