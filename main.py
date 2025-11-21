@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft.
-# Licensed under MIT License.
-
 import sys
 import os
 import traceback
@@ -18,18 +15,17 @@ from botbuilder.integration.aiohttp import (
 from botbuilder.schema import Activity, ActivityTypes
 
 from dotenv import load_dotenv
-from config import DefaultConfig
-
-# ---------- Load Environment ----------
 load_dotenv()
+
+from config import DefaultConfig
 CONFIG = DefaultConfig()
 
-# ---------- Adapter & Auth ----------
+# ---------------- AUTH + ADAPTER ----------------
 auth = ConfigurationBotFrameworkAuthentication(CONFIG)
 ADAPTER = CloudAdapter(auth)
 
 
-# ---------- Error Handling ----------
+# ---------------- ERROR HANDLER ----------------
 async def on_error(context: TurnContext, error: Exception):
     print(f"\n[ERROR] {error}", file=sys.stderr)
     traceback.print_exc()
@@ -51,60 +47,56 @@ async def on_error(context: TurnContext, error: Exception):
 
 ADAPTER.on_turn_error = on_error
 
-# ---------- Build RAG database (DuckDB — container-safe) ----------
 
+# ---------------- RAG SETUP ----------------
 import chromadb
-from chromadb.config import Settings
+from langchain_chroma import Chroma
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import CharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings,ChatOpenAI
-from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_classic.chains import RetrievalQA
+
 print("Building RAG DB...")
 
-# Create modern Chroma client
 client = chromadb.PersistentClient(path="./chroma_db")
 
-# Create / reuse collection (required metadata)
 collection = client.get_or_create_collection(
     name="rules_collection",
     metadata={"hnsw:space": "cosine"}
 )
 
-# Load PDFs
-pdf_folder = "Rules"
+pdf_folder = "./Rules"
 documents = []
 
-for fn in os.listdir(pdf_folder):
-    if fn.endswith(".pdf"):
-        loader = PyPDFLoader(os.path.join(pdf_folder, fn))
-        documents.extend(loader.load())
+if os.path.exists(pdf_folder):
+    for fn in os.listdir(pdf_folder):
+        if fn.endswith(".pdf"):
+            loader = PyPDFLoader(os.path.join(pdf_folder, fn))
+            documents.extend(loader.load())
+else:
+    print("WARNING: Rules/ directory not found!")
 
-# Split texts
 splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
 docs = splitter.split_documents(documents)
 
-# Embeddings
 embeddings = OpenAIEmbeddings(
     model="text-embedding-3-small",
     openai_api_key=os.getenv("OPENAI_API_KEY"),
 )
 
-# Use LangChain wrapper with the new client
 db = Chroma(
     client=client,
     collection_name="rules_collection",
     embedding_function=embeddings,
 )
 
-# Add docs only once
 if db._collection.count() == 0:
     print("Adding documents to vector database...")
     db.add_documents(docs)
 
 retriever = db.as_retriever(search_kwargs={"k": 3})
 
-print("RAG loaded successfully.")
+print("RAG ready.")
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
@@ -116,14 +108,9 @@ qa_chain = RetrievalQA.from_chain_type(
     llm=llm, retriever=retriever, return_source_documents=True
 )
 
-print("RAG system ready.")
 
-# -------------------------------------------------------------------------
-# --------------------------- BOT CLASS -----------------------------------
-# -------------------------------------------------------------------------
-
+# ---------------- BOT CLASS ----------------
 from openai import AsyncOpenAI
-
 
 class MyLLMBot:
     def __init__(self):
@@ -142,54 +129,50 @@ class MyLLMBot:
             rag = qa_chain.invoke({"query": user_text})
             answer = rag["result"]
 
-            # Build source list
-            seen = set()
             sources = ""
+            seen = set()
             for doc in rag["source_documents"]:
                 filename = os.path.basename(doc.metadata["source"])
                 page = doc.metadata["page"] + 1
                 key = (filename, page)
-
                 if key not in seen:
                     seen.add(key)
                     sources += f"\n• {filename} (Page {page})"
 
-            full_reply = answer + ("\n\n**Sources:**" + sources if sources else "")
-            await turn_context.send_activity(full_reply)
+            reply = answer + ("\n\n**Sources:**" + sources if sources else "")
+            await turn_context.send_activity(reply)
 
         except Exception as e:
-            print("RAG failure:", e)
+            print("RAG failed:", e)
             fallback = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=self.history,
-                temperature=0.6,
-                max_tokens=300,
+                temperature=0.7,
             )
-            reply = fallback.choices[0].message.content
-            await turn_context.send_activity(reply)
+            await turn_context.send_activity(fallback.choices[0].message.content)
 
 
 BOT = MyLLMBot()
 
-# -------------------------------------------------------------------------
-# ------------------------ AIOHTTP ROUTING --------------------------------
-# -------------------------------------------------------------------------
 
-
+# ---------------- BOT ROUTE (WORKS IN AZURE) ----------------
 async def messages(req: Request) -> Response:
-    """
-    This MUST return an aiohttp Response
-    or Bot Framework will throw 404 / 503.
-    """
-    return await ADAPTER.process(req, BOT)
+    body = await req.json()
+    auth_header = req.headers.get("Authorization", "")
+
+    return await ADAPTER.process(
+        req,
+        BOT,
+        body=body,
+        auth_header=auth_header
+    )
 
 
 app = web.Application(middlewares=[aiohttp_error_middleware])
 app.router.add_post("/api/messages", messages)
 
-# -------------------------------------------------------------------------
-# -------------------------- APP START ------------------------------------
-# -------------------------------------------------------------------------
 
+# ---------------- START APP ----------------
 if __name__ == "__main__":
-    web.run_app(app, host="0.0.0.0", port=CONFIG.PORT)
+    port = int(os.getenv("PORT", 8000))
+    web.run_app(app, host="0.0.0.0", port=port)
