@@ -1,42 +1,28 @@
-# ---------------------------
-# 1. Use official Python image
-# ---------------------------
-FROM python:3.12-slim
+# Base image
+FROM python:3.10-slim
 
-# ---------------------------
-# 2. Set working directory
-# ---------------------------
+# Work directory
 WORKDIR /app
 
-# ---------------------------
-# 3. Install system dependencies
-# ---------------------------
+# Install system deps
 RUN apt-get update && apt-get install -y \
     build-essential \
-    libpq-dev \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------------------------
-# 4. Copy requirements FIRST (layer caching)
-# ---------------------------
+# Install Python requirements
 COPY requirements.txt .
-
-# ---------------------------
-# 5. Install dependencies
-# ---------------------------
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ---------------------------
-# 6. Copy all your project files
-# ---------------------------
+# Copy bot code
 COPY . .
 
-# ---------------------------
-# 7. Expose the port Azure uses
-# ---------------------------
+# Ensure chroma directory exists
+RUN mkdir -p /app/chroma_db
+RUN mkdir -p /app/Rules
+
+# Expose port
 EXPOSE 8000
 
-# ---------------------------
-# 8. Start your Python bot server
-# ---------------------------
+# Start bot
 CMD ["python", "main.py"]
