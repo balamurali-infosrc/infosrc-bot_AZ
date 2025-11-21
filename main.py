@@ -1,179 +1,195 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
+# Copyright (c) Microsoft.
+# Licensed under MIT License.
 
 import sys
+import os
 import traceback
 from datetime import datetime
-from http import HTTPStatus
 
 from aiohttp import web
 from aiohttp.web import Request, Response
 
 from botbuilder.core import TurnContext
 from botbuilder.core.integration import aiohttp_error_middleware
-from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
+from botbuilder.integration.aiohttp import (
+    CloudAdapter,
+    ConfigurationBotFrameworkAuthentication,
+)
 from botbuilder.schema import Activity, ActivityTypes
 
-from config import DefaultConfig
-from openai import AsyncOpenAI
-import os
 from dotenv import load_dotenv
+from config import DefaultConfig
 
-# RAG IMPORTS
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import CharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_community.vectorstores import Chroma
-from langchain_classic.chains import RetrievalQA
-
-# Load environment variables
+# ---------- Load Environment ----------
 load_dotenv()
-
 CONFIG = DefaultConfig()
 
-# Create adapter
-ADAPTER = CloudAdapter(ConfigurationBotFrameworkAuthentication(CONFIG))
+# ---------- Adapter & Auth ----------
+auth = ConfigurationBotFrameworkAuthentication(CONFIG)
+ADAPTER = CloudAdapter(auth)
 
-# Global error handler (unchanged)
+
+# ---------- Error Handling ----------
 async def on_error(context: TurnContext, error: Exception):
-    print(f"\n[on_turn_error] unhandled error: {error}", file=sys.stderr)
+    print(f"\n[ERROR] {error}", file=sys.stderr)
     traceback.print_exc()
-    await context.send_activity("The bot encountered an error or bug.")
-    await context.send_activity("To continue to run this bot, please fix the bot source code.")
+
+    await context.send_activity("The bot encountered an error.")
+    await context.send_activity("Please fix the bot source code.")
+
     if context.activity.channel_id == "emulator":
-        trace_activity = Activity(
+        trace = Activity(
             label="TurnError",
             name="on_turn_error Trace",
             timestamp=datetime.utcnow(),
             type=ActivityTypes.trace,
-            value=f"{error}",
+            value=str(error),
             value_type="https://www.botframework.com/schemas/error",
         )
-        await context.send_activity(trace_activity)
+        await context.send_activity(trace)
+
 
 ADAPTER.on_turn_error = on_error
 
-# RAG SETUP
-print("Loading Rules PDFs and building knowledge base...")
+# ---------- Build RAG database (DuckDB — container-safe) ----------
 
+import chromadb
+from chromadb.config import Settings
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings,ChatOpenAI
+from langchain_community.vectorstores import Chroma
+from langchain_classic.chains import RetrievalQA
+print("Building RAG DB...")
+
+# Create modern Chroma client
+client = chromadb.PersistentClient(path="./chroma_db")
+
+# Create / reuse collection (required metadata)
+collection = client.get_or_create_collection(
+    name="rules_collection",
+    metadata={"hnsw:space": "cosine"}
+)
+
+# Load PDFs
 pdf_folder = "Rules"
-all_documents = []
+documents = []
 
-# Load all PDFs
-for file_name in os.listdir(pdf_folder):
-    if file_name.endswith(".pdf"):
-        file_path = os.path.join(pdf_folder, file_name)
-        loader = PyPDFLoader(file_path)
-        documents = loader.load()
-        all_documents.extend(documents)
+for fn in os.listdir(pdf_folder):
+    if fn.endswith(".pdf"):
+        loader = PyPDFLoader(os.path.join(pdf_folder, fn))
+        documents.extend(loader.load())
 
-# Splits the text
-text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
-docs = text_splitter.split_documents(all_documents)
+# Split texts
+splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
+docs = splitter.split_documents(documents)
 
-# Use all docs as texts
-texts = docs
-
-# Embeddings + Chroma
+# Embeddings
 embeddings = OpenAIEmbeddings(
     model="text-embedding-3-small",
-    openai_api_key=os.getenv("OPENAI_API_KEY")
+    openai_api_key=os.getenv("OPENAI_API_KEY"),
 )
 
-db = Chroma.from_documents(
-    texts, embeddings,
+# Use LangChain wrapper with the new client
+db = Chroma(
+    client=client,
     collection_name="rules_collection",
-    persist_directory="./chroma_db"
+    embedding_function=embeddings,
 )
-db.persist()
+
+# Add docs only once
+if db._collection.count() == 0:
+    print("Adding documents to vector database...")
+    db.add_documents(docs)
 
 retriever = db.as_retriever(search_kwargs={"k": 3})
+
+print("RAG loaded successfully.")
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0,
-    openai_api_key=os.getenv("OPENAI_API_KEY")
+    openai_api_key=os.getenv("OPENAI_API_KEY"),
 )
 
-# Your RAG chain
 qa_chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=retriever,
-    return_source_documents=True
+    llm=llm, retriever=retriever, return_source_documents=True
 )
 
-print("RAG system ready! Bot can now answer from PDFs.")
+print("RAG system ready.")
 
-# LLM BOT
+# -------------------------------------------------------------------------
+# --------------------------- BOT CLASS -----------------------------------
+# -------------------------------------------------------------------------
+
+from openai import AsyncOpenAI
+
+
 class MyLLMBot:
     def __init__(self):
         self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.conversation_history = []
+        self.history = []
 
     async def on_turn(self, turn_context: TurnContext):
         if turn_context.activity.type == ActivityTypes.message:
-            await self.on_message_activity(turn_context)
+            await self.on_message(turn_context)
 
-    async def on_message_activity(self, turn_context: TurnContext):
-        user_message = turn_context.activity.text.strip()
-        self.conversation_history.append({"role": "user", "content": user_message})
+    async def on_message(self, turn_context: TurnContext):
+        user_text = turn_context.activity.text.strip()
+        self.history.append({"role": "user", "content": user_text})
 
-        # USE RAG FOR QUESTIONS ABOUT RULES
         try:
-            # Run RAG
-            result = qa_chain.invoke({"query": user_message})
-            reply_text = result["result"]
-            sources = result["source_documents"]
+            rag = qa_chain.invoke({"query": user_text})
+            answer = rag["result"]
 
-            # Add sources to reply
-            source_text = ""
+            # Build source list
             seen = set()
-            for doc in sources:
-                src = doc.metadata['source']
-                page = doc.metadata['page'] + 1
-                filename = os.path.basename(src)
+            sources = ""
+            for doc in rag["source_documents"]:
+                filename = os.path.basename(doc.metadata["source"])
+                page = doc.metadata["page"] + 1
                 key = (filename, page)
+
                 if key not in seen:
                     seen.add(key)
-                    source_text += f"\n• {filename} (Page {page})"
+                    sources += f"\n• {filename} (Page {page})"
 
-            full_reply = f"{reply_text}\n\n**Sources:**{source_text}" if source_text else reply_text
-
-            self.conversation_history.append({"role": "assistant", "content": full_reply})
+            full_reply = answer + ("\n\n**Sources:**" + sources if sources else "")
             await turn_context.send_activity(full_reply)
 
         except Exception as e:
-            print(f"RAG Error: {e}")
-            # Fallback to normal GPT if RAG fails
-            try:
-                completion = await self.client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        *self.conversation_history
-                    ],
-                    max_tokens=400,
-                    temperature=0.7,
-                )
-                reply_text = completion.choices[0].message.content.strip()
-                self.conversation_history.append({"role": "assistant", "content": reply_text})
-                await turn_context.send_activity(reply_text)
-            except Exception as e2:
-                await turn_context.send_activity("Sorry, I couldn't respond right now.")
+            print("RAG failure:", e)
+            fallback = await self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=self.history,
+                temperature=0.6,
+                max_tokens=300,
+            )
+            reply = fallback.choices[0].message.content
+            await turn_context.send_activity(reply)
 
-# Create the bot instance
+
 BOT = MyLLMBot()
 
+# -------------------------------------------------------------------------
+# ------------------------ AIOHTTP ROUTING --------------------------------
+# -------------------------------------------------------------------------
 
-# Listen for incoming requests
+
 async def messages(req: Request) -> Response:
+    """
+    This MUST return an aiohttp Response
+    or Bot Framework will throw 404 / 503.
+    """
     return await ADAPTER.process(req, BOT)
 
-APP = web.Application(middlewares=[aiohttp_error_middleware])
-APP.router.add_post("/api/messages", messages)
+
+app = web.Application(middlewares=[aiohttp_error_middleware])
+app.router.add_post("/api/messages", messages)
+
+# -------------------------------------------------------------------------
+# -------------------------- APP START ------------------------------------
+# -------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    try:
-        web.run_app(APP, host="localhost", port=CONFIG.PORT)
-    except Exception as error:
-        raise error
+    web.run_app(app, host="0.0.0.0", port=CONFIG.PORT)

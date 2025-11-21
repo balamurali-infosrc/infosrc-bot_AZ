@@ -14,4 +14,4 @@ class DefaultConfig:
     APP_TENANTID = os.environ.get("MICROSOFT_TENANT_ID", "")
     APP_TYPE = os.environ.get("MicrosoftAppType", "SingleTenant")
 
-    print(f"Config Loaded: APP_ID={APP_ID}, APP_TYPE={APP_TYPE}, PORT={PORT}, TenantID={APP_TENANTID}")
+    #print(f"Config Loaded: APP_ID={APP_ID}, APP_TYPE={APP_TYPE}, PORT={PORT}, TenantID={APP_TENANTID}")
