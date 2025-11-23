@@ -58,23 +58,31 @@ from langchain_classic.chains import RetrievalQA
 
 print("Building RAG DB...")
 
-client = chromadb.PersistentClient(path="./chroma_db")
+# Base directory inside container
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+CHROMA_PATH = os.path.join(BASE_DIR, "chroma_db")
+PDF_PATH = os.path.join(BASE_DIR, "Rules")
+
+# Ensure Chroma folder exists
+os.makedirs(CHROMA_PATH, exist_ok=True)
+
+client = chromadb.PersistentClient(path=CHROMA_PATH)
 
 collection = client.get_or_create_collection(
     name="rules_collection",
     metadata={"hnsw:space": "cosine"}
 )
 
-pdf_folder = "./Rules"
 documents = []
 
-if os.path.exists(pdf_folder):
-    for fn in os.listdir(pdf_folder):
+if os.path.exists(PDF_PATH):
+    for fn in os.listdir(PDF_PATH):
         if fn.endswith(".pdf"):
-            loader = PyPDFLoader(os.path.join(pdf_folder, fn))
+            loader = PyPDFLoader(os.path.join(PDF_PATH, fn))
             documents.extend(loader.load())
 else:
-    print("WARNING: Rules/ directory not found!")
+    print("WARNING: Rules directory not found inside container:", PDF_PATH)
 
 splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
 docs = splitter.split_documents(documents)
@@ -93,6 +101,8 @@ db = Chroma(
 if db._collection.count() == 0:
     print("Adding documents to vector database...")
     db.add_documents(docs)
+else:
+    print("Chroma already populated.")
 
 retriever = db.as_retriever(search_kwargs={"k": 3})
 

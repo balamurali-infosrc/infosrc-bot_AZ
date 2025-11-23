@@ -15,10 +15,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy bot code
-COPY . .
+COPY . /app
 
 # Ensure chroma directory exists
-RUN mkdir -p /app/chroma_db
+RUN mkdir -p /app/chroma_db &&
 RUN mkdir -p /app/Rules
 
 # Expose port
