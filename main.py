@@ -159,11 +159,11 @@ class MyLLMBot:
                 messages=self.history,
                 temperature=0.7,
             )
+            
             await turn_context.send_activity(fallback.choices[0].message.content)
 
 
 BOT = MyLLMBot()
-
 
 # ---------------- BOT ROUTE (WORKS IN AZURE) ----------------
 async def messages(req: Request) -> Response:

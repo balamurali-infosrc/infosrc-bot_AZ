@@ -5,6 +5,7 @@ python-dotenv
 langchain
 langchain-community
 langchain-openai
+langchain-chroma
 chromadb
 pypdf
 tiktoken
@@ -12,4 +13,5 @@ fastapi
 uvicorn
 gunicorn
 botbuilder-schema
+azure-identity
 
